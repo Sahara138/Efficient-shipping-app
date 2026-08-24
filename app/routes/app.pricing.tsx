@@ -10,16 +10,16 @@ import {
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
 
-export default function AdditionalPage() {
+export default function PricingPage() {
   return (
     <Page>
-      <TitleBar title="Additional page" />
+      <TitleBar title="Pricing" />
       <Layout>
         <Layout.Section>
           <Card>
             <BlockStack gap="300">
               <Text as="p" variant="bodyMd">
-                The app template comes with an additional page which
+                The app template comes with an settings page which
                 demonstrates how to create multiple pages within app navigation
                 using{" "}
                 <Link
