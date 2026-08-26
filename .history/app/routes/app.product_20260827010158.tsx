@@ -884,69 +884,44 @@ export default function ProductPage() {
         ================================================= */}
 
         <Card>
-  <InlineStack
-    align="space-between"
-    blockAlign="center"
-  >
-    <Form method="get">
-      <input
-        type="hidden"
-        name="direction"
-        value="previous"
-      />
+          <InlineStack align="space-between" blockAlign="center">
+            {/* PREVIOUS */}
 
-      <input
-        type="hidden"
-        name="before"
-        value={pageInfo.startCursor || ""}
-      />
+            <Button
+              disabled={!pageInfo.hasPreviousPage}
+              url={
+                pageInfo.hasPreviousPage
+                  ? `/app/products?direction=previous&before=${pageInfo.startCursor}&query=${encodeURIComponent(
+                      searchQuery,
+                    )}`
+                  : undefined
+              }
+            >
+              Previous
+            </Button>
 
-      <input
-        type="hidden"
-        name="query"
-        value={searchQuery}
-      />
+            {/* PAGE INFO */}
 
-      <Button
-        submit
-        disabled={!pageInfo.hasPreviousPage}
-      >
-        Previous
-      </Button>
-    </Form>
+            <Text as="p" tone="subdued">
+              Showing {products.length} products
+            </Text>
 
-    <Text as="p" tone="subdued">
-      Showing {products.length} products
-    </Text>
+            {/* NEXT */}
 
-    <Form method="get">
-      <input
-        type="hidden"
-        name="direction"
-        value="next"
-      />
-
-      <input
-        type="hidden"
-        name="after"
-        value={pageInfo.endCursor || ""}
-      />
-
-      <input
-        type="hidden"
-        name="query"
-        value={searchQuery}
-      />
-
-      <Button
-        submit
-        disabled={!pageInfo.hasNextPage}
-      >
-        Next
-      </Button>
-    </Form>
-  </InlineStack>
-</Card>
+            <Button
+              disabled={!pageInfo.hasNextPage}
+              url={
+                pageInfo.hasNextPage
+                  ? `/app/products?direction=next&after=${pageInfo.endCursor}&query=${encodeURIComponent(
+                      searchQuery,
+                    )}`
+                  : undefined
+              }
+            >
+              Next
+            </Button>
+          </InlineStack>
+        </Card>
       </BlockStack>
 
       {/* =================================================
