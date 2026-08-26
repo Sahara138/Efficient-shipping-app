@@ -1,4 +1,5 @@
 import { useState } from "react";
+
 import {
   Page,
   Card,
@@ -14,8 +15,12 @@ import {
   Link,
   Badge,
 } from "@shopify/polaris";
+
 import { TitleBar } from "@shopify/app-bridge-react";
-import { ActionFunctionArgs, json } from "@remix-run/node";
+
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
+
 import {
   Form,
   useActionData,
@@ -23,55 +28,85 @@ import {
   useNavigation,
 } from "@remix-run/react";
 
-export async function loader() {
-  const settings = {
-    storeName: "Efficient Shipping Store",
-    businessAddress: "123 Main St, Anytown, USA",
-    storePhone: "+1 (555) 123-4567",
+import db from "../db.server";
 
-    currency: "usd",
+/**
+ * GET /settings
+ * Load current settings
+ */
+export async function loader({ request }: LoaderFunctionArgs) {
+  const settings = await db.settings.findUnique({
+    where: {
+      id: 1,
+    },
+  });
 
-    shippingProvider: "none",
+  if (!settings) {
+    const defaultSettings = await db.settings.create({
+      data: {
+        id: 1,
+        storeName: "Efficient Shipping Store",
+        businessAddress: "123 Main St, Anytown, USA",
+        storePhone: "+1 (555) 123-4567",
+        currency: "usd",
+        shippingProvider: "none",
+        defaultPackage: "medium",
+        notificationFrequency: "immediately",
+        notifications: [
+          "new-order",
+          "shipping-update",
+          "delivery-update",
+        ],
+        autoFulfillment: false,
+        insurance: false,
+        signatureRequired: false,
+      },
+    });
 
-    defaultPackage: "medium",
-
-    notificationFrequency: "immediately",
-
-    notifications: [
-      "new-order",
-      "shipping-update",
-      "delivery-update",
-    ],
-
-    autoFulfillment: false,
-
-    insurance: false,
-
-    signatureRequired: false,
-  };
+    return json(defaultSettings);
+  }
 
   return json(settings);
 }
 
+/**
+ * POST /settings
+ * Save settings
+ */
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
 
   const settings = {
-    storeName: formData.get("storeName"),
-    businessAddress: formData.get("businessAddress"),
-    storePhone: formData.get("storePhone"),
+    storeName: String(formData.get("storeName") ?? ""),
 
-    currency: formData.get("currency"),
-
-    shippingProvider: formData.get("shippingProvider"),
-
-    defaultPackage: formData.get("defaultPackage"),
-
-    notificationFrequency: formData.get(
-      "notificationFrequency"
+    businessAddress: String(
+      formData.get("businessAddress") ?? ""
     ),
 
-    notifications: formData.getAll("notifications"),
+    storePhone: String(
+      formData.get("storePhone") ?? ""
+    ),
+
+    currency: String(
+      formData.get("currency") ?? "usd"
+    ),
+
+    shippingProvider: String(
+      formData.get("shippingProvider") ?? "none"
+    ),
+
+    defaultPackage: String(
+      formData.get("defaultPackage") ?? "medium"
+    ),
+
+    notificationFrequency: String(
+      formData.get("notificationFrequency") ??
+        "immediately"
+    ),
+
+    notifications: formData.getAll("notifications").map(
+      String
+    ),
 
     autoFulfillment:
       formData.get("autoFulfillment") === "true",
@@ -83,48 +118,90 @@ export async function action({ request }: ActionFunctionArgs) {
       formData.get("signatureRequired") === "true",
   };
 
-  console.log("Updated shipping settings:", settings);
+  console.log(
+    "Updated shipping settings:",
+    settings
+  );
 
-  // TODO:
-  // Save settings to database using shop/session/shopId.
+  await db.settings.upsert({
+    where: {
+      id: 1,
+    },
+
+    update: {
+      storeName: settings.storeName,
+      businessAddress: settings.businessAddress,
+      storePhone: settings.storePhone,
+      currency: settings.currency,
+      shippingProvider: settings.shippingProvider,
+      defaultPackage: settings.defaultPackage,
+      notificationFrequency:
+        settings.notificationFrequency,
+      notifications: settings.notifications,
+      autoFulfillment:
+        settings.autoFulfillment,
+      insurance: settings.insurance,
+      signatureRequired:
+        settings.signatureRequired,
+    },
+
+    create: {
+      id: 1,
+      storeName: settings.storeName,
+      businessAddress: settings.businessAddress,
+      storePhone: settings.storePhone,
+      currency: settings.currency,
+      shippingProvider: settings.shippingProvider,
+      defaultPackage: settings.defaultPackage,
+      notificationFrequency:
+        settings.notificationFrequency,
+      notifications: settings.notifications,
+      autoFulfillment:
+        settings.autoFulfillment,
+      insurance: settings.insurance,
+      signatureRequired:
+        settings.signatureRequired,
+    },
+  });
 
   return json({
     success: true,
-    message: "Shipping settings updated successfully.",
+    message:
+      "Shipping settings updated successfully.",
     settings,
   });
 }
 
 export default function SettingsPage() {
   const settings = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
+
+  const actionData =
+    useActionData<typeof action>();
+
   const navigation = useNavigation();
 
-  const isSaving = navigation.state === "submitting";
+  const isSaving =
+    navigation.state === "submitting";
 
-  const [formState, setFormState] = useState({
-    storeName: settings.storeName,
-    businessAddress: settings.businessAddress,
-    storePhone: settings.storePhone,
+const [formState, setFormState] = useState({
+  storeName: settings.storeName,
+  businessAddress: settings.businessAddress,
+  storePhone: settings.storePhone,
 
-    currency: settings.currency,
+  currency: settings.currency,
+  shippingProvider: settings.shippingProvider,
+  defaultPackage: settings.defaultPackage,
+  notificationFrequency:
+    settings.notificationFrequency,
 
-    shippingProvider: settings.shippingProvider,
+  notifications: Array.isArray(settings.notifications)
+    ? settings.notifications.map(String)
+    : [],
 
-    defaultPackage: settings.defaultPackage,
-
-    notificationFrequency:
-      settings.notificationFrequency,
-
-    notifications: settings.notifications,
-
-    autoFulfillment: settings.autoFulfillment,
-
-    insurance: settings.insurance,
-
-    signatureRequired:
-      settings.signatureRequired,
-  });
+  autoFulfillment: settings.autoFulfillment,
+  insurance: settings.insurance,
+  signatureRequired: settings.signatureRequired,
+});
 
   return (
     <Page>
@@ -133,12 +210,18 @@ export default function SettingsPage() {
       <BlockStack gap="500">
 
         {/* SUCCESS MESSAGE */}
+
         {actionData?.success && (
           <Card>
             <InlineStack gap="200">
-              <Badge tone="success">Saved</Badge>
+              <Badge tone="success">
+                Saved
+              </Badge>
 
-              <Text as="p" variant="bodyMd">
+              <Text
+                as="p"
+                variant="bodyMd"
+              >
                 {actionData.message}
               </Text>
             </InlineStack>
@@ -150,6 +233,7 @@ export default function SettingsPage() {
           <BlockStack gap="500">
 
             {/* STORE INFORMATION */}
+
             <Card>
               <BlockStack gap="400">
 
@@ -169,7 +253,9 @@ export default function SettingsPage() {
                     variant="primary"
                     loading={isSaving}
                   >
-                    {isSaving ? "Saving..." : "Save"}
+                    {isSaving
+                      ? "Saving..."
+                      : "Save"}
                   </Button>
                 </InlineStack>
 
@@ -189,7 +275,9 @@ export default function SettingsPage() {
                 <TextField
                   label="Business address"
                   name="businessAddress"
-                  value={formState.businessAddress}
+                  value={
+                    formState.businessAddress
+                  }
                   onChange={(value) =>
                     setFormState((prev) => ({
                       ...prev,
@@ -222,7 +310,8 @@ export default function SettingsPage() {
                       value: "usd",
                     },
                     {
-                      label: "Canadian Dollar (CAD)",
+                      label:
+                        "Canadian Dollar (CAD)",
                       value: "cad",
                     },
                     {
@@ -230,7 +319,8 @@ export default function SettingsPage() {
                       value: "eur",
                     },
                     {
-                      label: "British Pound (£)",
+                      label:
+                        "British Pound (£)",
                       value: "gbp",
                     },
                   ]}
@@ -246,8 +336,8 @@ export default function SettingsPage() {
               </BlockStack>
             </Card>
 
-
             {/* SHIPPING PROVIDER */}
+
             <Card>
               <BlockStack gap="400">
 
@@ -263,9 +353,9 @@ export default function SettingsPage() {
                   variant="bodyMd"
                   tone="subdued"
                 >
-                  Connect your shipping provider to
-                  automatically calculate rates and
-                  manage shipments.
+                  Connect your shipping provider
+                  to automatically calculate rates
+                  and manage shipments.
                 </Text>
 
                 <Select
@@ -273,7 +363,8 @@ export default function SettingsPage() {
                   name="shippingProvider"
                   options={[
                     {
-                      label: "Select provider",
+                      label:
+                        "Select provider",
                       value: "none",
                     },
                     {
@@ -293,11 +384,14 @@ export default function SettingsPage() {
                       value: "usps",
                     },
                     {
-                      label: "Custom / Other",
+                      label:
+                        "Custom / Other",
                       value: "custom",
                     },
                   ]}
-                  value={formState.shippingProvider}
+                  value={
+                    formState.shippingProvider
+                  }
                   onChange={(value) =>
                     setFormState((prev) => ({
                       ...prev,
@@ -306,9 +400,7 @@ export default function SettingsPage() {
                   }
                 />
 
-                <InlineStack
-                  align="end"
-                >
+                <InlineStack align="end">
                   <Button variant="primary">
                     Connect Provider
                   </Button>
@@ -317,8 +409,8 @@ export default function SettingsPage() {
               </BlockStack>
             </Card>
 
-
             {/* PACKAGE SETTINGS */}
+
             <Card>
               <BlockStack gap="400">
 
@@ -334,8 +426,9 @@ export default function SettingsPage() {
                   variant="bodyMd"
                   tone="subdued"
                 >
-                  Choose the default package size used
-                  when calculating shipping rates.
+                  Choose the default package size
+                  used when calculating shipping
+                  rates.
                 </Text>
 
                 <Select
@@ -359,7 +452,9 @@ export default function SettingsPage() {
                       value: "extra-large",
                     },
                   ]}
-                  value={formState.defaultPackage}
+                  value={
+                    formState.defaultPackage
+                  }
                   onChange={(value) =>
                     setFormState((prev) => ({
                       ...prev,
@@ -371,8 +466,8 @@ export default function SettingsPage() {
               </BlockStack>
             </Card>
 
-
             {/* SHIPPING PREFERENCES */}
+
             <Card>
               <BlockStack gap="400">
 
@@ -389,17 +484,20 @@ export default function SettingsPage() {
                     {
                       label:
                         "Automatically fulfill orders",
-                      value: "auto-fulfillment",
+                      value:
+                        "auto-fulfillment",
                     },
                     {
                       label:
                         "Offer shipping insurance",
-                      value: "insurance",
+                      value:
+                        "insurance",
                     },
                     {
                       label:
                         "Require signature on delivery",
-                      value: "signature-required",
+                      value:
+                        "signature-required",
                     },
                   ]}
                   selected={[
@@ -412,7 +510,9 @@ export default function SettingsPage() {
                       : []),
 
                     ...(formState.signatureRequired
-                      ? ["signature-required"]
+                      ? [
+                          "signature-required",
+                        ]
                       : []),
                   ]}
                   onChange={(values) => {
@@ -438,11 +538,37 @@ export default function SettingsPage() {
                   allowMultiple
                 />
 
+                {/* Hidden inputs */}
+
+                <input
+                  type="hidden"
+                  name="autoFulfillment"
+                  value={String(
+                    formState.autoFulfillment
+                  )}
+                />
+
+                <input
+                  type="hidden"
+                  name="insurance"
+                  value={String(
+                    formState.insurance
+                  )}
+                />
+
+                <input
+                  type="hidden"
+                  name="signatureRequired"
+                  value={String(
+                    formState.signatureRequired
+                  )}
+                />
+
               </BlockStack>
             </Card>
 
-
             {/* NOTIFICATIONS */}
+
             <Card>
               <BlockStack gap="400">
 
@@ -462,11 +588,13 @@ export default function SettingsPage() {
                       value: "immediately",
                     },
                     {
-                      label: "Hourly digest",
+                      label:
+                        "Hourly digest",
                       value: "hourly",
                     },
                     {
-                      label: "Daily digest",
+                      label:
+                        "Daily digest",
                       value: "daily",
                     },
                   ]}
@@ -488,22 +616,26 @@ export default function SettingsPage() {
                     {
                       label:
                         "New order notifications",
-                      value: "new-order",
+                      value:
+                        "new-order",
                     },
                     {
                       label:
                         "Shipping updates",
-                      value: "shipping-update",
+                      value:
+                        "shipping-update",
                     },
                     {
                       label:
                         "Delivery updates",
-                      value: "delivery-update",
+                      value:
+                        "delivery-update",
                     },
                     {
                       label:
                         "Failed shipment alerts",
-                      value: "failed-shipment",
+                      value:
+                        "failed-shipment",
                     },
                     {
                       label:
@@ -523,11 +655,24 @@ export default function SettingsPage() {
                   allowMultiple
                 />
 
+                {/* Hidden notification inputs */}
+
+                {formState.notifications.map(
+                  (notification: string) => (
+                    <input
+                      key={notification}
+                      type="hidden"
+                      name="notifications"
+                      value={notification}
+                    />
+                  )
+                )}
+
               </BlockStack>
             </Card>
 
-
             {/* CONNECTED ACCOUNTS */}
+
             <Card>
               <BlockStack gap="400">
 
@@ -557,7 +702,8 @@ export default function SettingsPage() {
                       variant="bodyMd"
                       tone="subdued"
                     >
-                      No shipping provider connected
+                      No shipping provider
+                      connected
                     </Text>
 
                   </BlockStack>
@@ -573,16 +719,17 @@ export default function SettingsPage() {
                   variant="bodySm"
                   tone="subdued"
                 >
-                  Connect your shipping provider account
-                  to enable live shipping rates,
-                  shipment tracking, and label creation.
+                  Connect your shipping provider
+                  account to enable live shipping
+                  rates, shipment tracking, and label
+                  creation.
                 </Text>
 
               </BlockStack>
             </Card>
 
-
             {/* TOOLS */}
+
             <Card>
               <BlockStack gap="400">
 
@@ -614,8 +761,9 @@ export default function SettingsPage() {
                         variant="bodyMd"
                         tone="subdued"
                       >
-                        Reset all shipping settings
-                        to their default values.
+                        Reset all shipping
+                        settings to their
+                        default values.
                       </Text>
 
                     </BlockStack>
@@ -648,7 +796,8 @@ export default function SettingsPage() {
                         tone="subdued"
                       >
                         Download a backup of your
-                        current shipping configuration.
+                        current shipping
+                        configuration.
                       </Text>
 
                     </BlockStack>
@@ -660,12 +809,11 @@ export default function SettingsPage() {
                   </InlineStack>
 
                 </BlockStack>
-
               </BlockStack>
             </Card>
 
-
             {/* SAVE BUTTON */}
+
             <InlineStack align="end">
               <Button
                 submit
@@ -682,8 +830,8 @@ export default function SettingsPage() {
 
         </Form>
 
-
         {/* FOOTER */}
+
         <Box paddingBlockStart="400">
           <InlineStack align="center">
 
@@ -692,13 +840,15 @@ export default function SettingsPage() {
               variant="bodySm"
               tone="subdued"
             >
-              Need help with shipping configuration?{" "}
+              Need help with shipping
+              configuration?{" "}
 
               <Link
                 url="https://help.shopify.com"
                 external
               >
-                View Shopify shipping documentation
+                View Shopify shipping
+                documentation
               </Link>
             </Text>
 
