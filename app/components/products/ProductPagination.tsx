@@ -1,35 +1,28 @@
-import {
-  Box,
-  InlineStack,
-  Button,
-} from "@shopify/polaris";
-
+import { Box, InlineStack, Button } from "@shopify/polaris";
 import type { ProductPageInfo } from "../../types/product";
 
 type Props = {
   pageInfo: ProductPageInfo;
   searchQuery: string;
+  onPageChange?: (direction: "next" | "previous") => void;
 };
 
 export default function ProductPagination({
   pageInfo,
   searchQuery,
+  onPageChange,
 }: Props) {
-  const query = encodeURIComponent(
-    searchQuery,
-  );
+  const query = encodeURIComponent(searchQuery);
 
   return (
     <Box padding="400">
-      <InlineStack
-        align="space-between"
-        blockAlign="center"
-      >
+      <InlineStack align="space-between" blockAlign="center">
         <Button
           disabled={!pageInfo.hasPreviousPage}
+          onClick={onPageChange ? () => onPageChange("previous") : undefined}
           url={
-            pageInfo.hasPreviousPage
-              ? `/app/products?direction=previous&before=${pageInfo.startCursor}&query=${query}`
+            !onPageChange && pageInfo.hasPreviousPage
+              ? `/app/product?direction=previous&before=${pageInfo.startCursor}&query=${query}`
               : undefined
           }
         >
@@ -38,9 +31,10 @@ export default function ProductPagination({
 
         <Button
           disabled={!pageInfo.hasNextPage}
+          onClick={onPageChange ? () => onPageChange("next") : undefined}
           url={
-            pageInfo.hasNextPage
-              ? `/app/products?direction=next&after=${pageInfo.endCursor}&query=${query}`
+            !onPageChange && pageInfo.hasNextPage
+              ? `/app/product?direction=next&after=${pageInfo.endCursor}&query=${query}`
               : undefined
           }
         >

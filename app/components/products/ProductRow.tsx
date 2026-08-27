@@ -1,16 +1,15 @@
 import {
-  InlineStack,
-  BlockStack,
   Text,
-  Button,
   Badge,
   Thumbnail,
+  InlineStack,
+  Button,
+  Checkbox,
 } from "@shopify/polaris";
 
-import {
-  EditIcon,
-  DeleteIcon,
-} from "@shopify/polaris-icons";
+import { EditIcon, DeleteIcon } from "@shopify/polaris-icons";
+
+import { Link } from "@remix-run/react";
 
 import type { Product } from "../../types/product";
 
@@ -36,66 +35,61 @@ export default function ProductRow({
         gridTemplateColumns:
           "50px minmax(280px, 2fr) 1fr 1fr 120px 130px",
         gap: "20px",
-        padding: "18px 24px",
-        borderBottom: "1px solid #e1e3e5",
+        padding: "16px 24px",
         alignItems: "center",
+        borderBottom: "1px solid #e1e3e5",
       }}
     >
-      {/* CHECKBOX */}
-
-      <input
-        type="checkbox"
+      <Checkbox
+        label={`Select ${product.title}`}
+        labelHidden
         checked={selected}
-        onChange={(e) =>
-          onSelect(e.target.checked)
-        }
+        onChange={onSelect}
       />
 
       {/* PRODUCT */}
 
-      <InlineStack
-        gap="300"
-        blockAlign="center"
-        wrap={false}
-      >
+      <InlineStack gap="300" blockAlign="center">
         <Thumbnail
           source={
             product.featuredImage?.url ||
-            "https://cdn.shopify.com/static/no-image.svg"
+            "https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
           }
-          alt={product.title}
-          size="medium"
+          alt={product.featuredImage?.altText || product.title}
+          size="small"
         />
 
-        <BlockStack gap="100">
-          <Button
-            variant="plain"
-            onClick={onEdit}
-          >
-            
-            {product.title}
-          </Button>
+        <div>
+          <Link to={`/app/product/${product.id}`}>
+            <Text
+              as="span"
+              variant="bodyMd"
+              fontWeight="semibold"
+            >
+              {product.title}
+            </Text>
+          </Link>
 
           <Text
             as="p"
             variant="bodySm"
             tone="subdued"
           >
-            /products/{product.handle}
+            {product.handle}
           </Text>
-        </BlockStack>
+        </div>
       </InlineStack>
 
-      {/* TYPE */}
+      {/* PRODUCT TYPE */}
 
       <Text as="span">
-        {product.productType || "—"}
+        {product.productType || "-"}
       </Text>
 
       {/* VENDOR */}
 
       <Text as="span">
-        {product.vendor || "—"}
+        {product.vendor || "-"}
       </Text>
 
       {/* STATUS */}
@@ -104,7 +98,9 @@ export default function ProductRow({
         tone={
           product.status === "ACTIVE"
             ? "success"
-            : "attention"
+            : product.status === "DRAFT"
+              ? "info"
+              : "attention"
         }
       >
         {product.status}
@@ -116,14 +112,12 @@ export default function ProductRow({
         <Button
           icon={EditIcon}
           accessibilityLabel="Edit product"
-          variant="tertiary"
           onClick={onEdit}
         />
 
         <Button
           icon={DeleteIcon}
           accessibilityLabel="Delete product"
-          variant="tertiary"
           tone="critical"
           onClick={onDelete}
         />
