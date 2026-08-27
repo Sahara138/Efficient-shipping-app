@@ -32,3 +32,26 @@ model Session {
   refreshToken        String?
   refreshTokenExpires DateTime?
 }
+
+model Settings {
+  id                    Int      @id @default(1)
+
+  storeName             String
+  businessAddress       String
+  storePhone            String
+
+  currency              String
+  shippingProvider      String
+  defaultPackage        String
+
+  notificationFrequency String
+
+  notifications         Json
+
+  autoFulfillment       Boolean  @default(false)
+  insurance             Boolean  @default(false)
+  signatureRequired     Boolean  @default(false)
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
